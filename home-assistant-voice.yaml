@@ -978,9 +978,11 @@ sensor:
     peak:
       id: mww_mic_peak
       name: mWW Mic Peak
+      entity_category: diagnostic
     rms:
       id: mww_mic_rms
       name: mWW Mic RMS
+      entity_category: diagnostic
       on_value:
         then:
           - if:
@@ -1021,6 +1023,7 @@ number:
     initial_value: -75
     step: 1
     restore_value: true
+    entity_category: config
 
 event:
   # Event entity exposed to the user to automate on complex center button presses.
