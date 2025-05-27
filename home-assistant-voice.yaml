@@ -260,7 +260,6 @@ switch:
       - lambda: id(mww_gain) = ${default_gain_factor};
       - script.execute: set_gain_factor
 
-
 binary_sensor:
   # Center Button. Used for many things (See on_multi_click)
   - platform: gpio
@@ -994,24 +993,24 @@ sensor:
                   # RMS is far away from the target
                   - lambda: return (abs(id(mww_mic_rms).state - id(target_rms).state) > 6.0f);
               then:
-                  - logger.log:
-                      format: "Long period of stable sound levels, assuming the noise floor is %.0f dB."
-                      args: ['id(mww_mic_rms).state']
-                  # Increase gain with a factor of 3/2 or decrease gain with a factor of 2/3
-                  # This uses integer division, so the actual value used is the floor)
-                  - lambda: |-
-                      if (id(mww_mic_rms).state < id(target_rms).state) {
-                        // Too quiet, increase gain factor
-                        if (id(mww_gain) < 2) {
-                          id(mww_gain) = 2;
-                        } else {
-                          id(mww_gain) = (id(mww_gain)*3)/2;
-                        }
+                - logger.log:
+                    format: "Long period of stable sound levels, assuming the noise floor is %.0f dB."
+                    args: ['id(mww_mic_rms).state']
+                # Increase gain with a factor of 3/2 or decrease gain with a factor of 2/3
+                # This uses integer division, so the actual value used is the floor)
+                - lambda: |-
+                    if (id(mww_mic_rms).state < id(target_rms).state) {
+                      // Too quiet, increase gain factor
+                      if (id(mww_gain) < 2) {
+                        id(mww_gain) = 2;
                       } else {
-                        // Too loud, decrease gain factor
-                        id(mww_gain) = (id(mww_gain)*2)/3;
+                        id(mww_gain) = (id(mww_gain)*3)/2;
                       }
-                  - script.execute: set_gain_factor
+                    } else {
+                      // Too loud, decrease gain factor
+                      id(mww_gain) = (id(mww_gain)*2)/3;
+                    }
+                - script.execute: set_gain_factor
 
 number:
   - platform: template
@@ -1462,7 +1461,6 @@ script:
       - logger.log:
           format: "Setting the gain factor for microWakeWord audio to %d"
           args: ['id(mww_gain)']
-
 
 i2s_audio:
   - id: i2s_output
