@@ -989,7 +989,7 @@ sensor:
                 and:
                   - switch.is_on: mww_gain_adjustment_setting
                   # RMS value is roughly the noise floor since there weren't any sounds much louder
-                  - lambda: return (abs(id(mww_mic_rms).state - id(mww_mic_peak).state) < 20.0f);
+                  - lambda: return (abs(id(mww_mic_rms).state - id(mww_mic_peak).state) < 40.0f);
                   # RMS is far away from the target
                   - lambda: return (abs(id(mww_mic_rms).state - id(target_rms).state) > 6.0f);
               then:
