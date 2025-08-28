@@ -1660,7 +1660,7 @@ external_components:
       - voice_kit
     refresh: 0s
   - source: github://pr#10183
-    components: [audio, mdns, resonate]
+    components: [audio, mdns, resonate, mixer]
     refresh: 0s
 
 audio_dac:
