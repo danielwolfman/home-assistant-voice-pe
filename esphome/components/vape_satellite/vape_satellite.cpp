@@ -13,7 +13,8 @@ namespace vape_satellite {
 static const char *const TAG = "vape_satellite";
 static const size_t MIC_RING_BUFFER_SIZE = 64 * 1024;
 static const size_t SEND_CHUNK_SIZE = 1280;
-static const uint32_t WEBSOCKET_SEND_TIMEOUT_MS = 5;
+static const uint32_t WEBSOCKET_SEND_TIMEOUT_MS = 20;
+static const uint32_t SPEAKER_PLAY_TIMEOUT_MS = 100;
 static const uint32_t RECONNECT_INTERVAL_MS = 1000;
 
 void VapeSatellite::setup() {
@@ -182,17 +183,24 @@ void VapeSatellite::handle_text_(const char *data, size_t len) {
   }
 
   if (message.find("\"type\":\"start_capture\"") != std::string::npos) {
+    this->listening_trigger_.trigger();
     this->set_state_(State::STREAMING);
     return;
   }
 
   if (message.find("\"type\":\"start_playback\"") != std::string::npos) {
+    this->speaking_trigger_.trigger();
     if (this->speaker_ != nullptr) {
       this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, 1, this->output_sample_rate_));
       if (!this->speaker_->is_running()) {
         this->speaker_->start();
       }
     }
+    return;
+  }
+
+  if (message.find("\"type\":\"set_state\"") != std::string::npos) {
+    this->handle_remote_state_(message);
     return;
   }
 
@@ -204,6 +212,18 @@ void VapeSatellite::handle_text_(const char *data, size_t len) {
   }
 }
 
+void VapeSatellite::handle_remote_state_(const std::string &message) {
+  if (message.find("\"state\":\"idle\"") != std::string::npos) {
+    this->idle_trigger_.trigger();
+  } else if (message.find("\"state\":\"listening\"") != std::string::npos) {
+    this->listening_trigger_.trigger();
+  } else if (message.find("\"state\":\"thinking\"") != std::string::npos) {
+    this->thinking_trigger_.trigger();
+  } else if (message.find("\"state\":\"speaking\"") != std::string::npos) {
+    this->speaking_trigger_.trigger();
+  }
+}
+
 void VapeSatellite::handle_binary_(const uint8_t *data, size_t len) {
   if (this->speaker_ == nullptr || data == nullptr || len == 0) {
     return;
@@ -211,7 +231,17 @@ void VapeSatellite::handle_binary_(const uint8_t *data, size_t len) {
   if (!this->speaker_->is_running()) {
     this->speaker_->start();
   }
-  this->speaker_->play(data, len, 0);
+  size_t written = 0;
+  while (written < len) {
+    size_t bytes = this->speaker_->play(data + written, len - written, pdMS_TO_TICKS(SPEAKER_PLAY_TIMEOUT_MS));
+    if (bytes == 0) {
+      break;
+    }
+    written += bytes;
+  }
+  if (written < len) {
+    ESP_LOGW(TAG, "Dropped %zu of %zu playback bytes", len - written, len);
+  }
 }
 
 void VapeSatellite::handle_connected_() {

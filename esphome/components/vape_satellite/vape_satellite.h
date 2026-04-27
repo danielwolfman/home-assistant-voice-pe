@@ -3,6 +3,7 @@
 #include "esphome/components/audio/audio.h"
 #include "esphome/components/microphone/microphone_source.h"
 #include "esphome/components/speaker/speaker.h"
+#include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/ring_buffer.h"
 
@@ -28,6 +29,10 @@ class VapeSatellite : public Component {
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
   void set_input_sample_rate(uint32_t sample_rate) { this->input_sample_rate_ = sample_rate; }
   void set_output_sample_rate(uint32_t sample_rate) { this->output_sample_rate_ = sample_rate; }
+  Trigger<> *get_idle_trigger() { return &this->idle_trigger_; }
+  Trigger<> *get_listening_trigger() { return &this->listening_trigger_; }
+  Trigger<> *get_thinking_trigger() { return &this->thinking_trigger_; }
+  Trigger<> *get_speaking_trigger() { return &this->speaking_trigger_; }
 
   void start(const std::string &wake_word);
   void stop();
@@ -51,6 +56,7 @@ class VapeSatellite : public Component {
   void handle_binary_(const uint8_t *data, size_t len);
   void handle_connected_();
   void handle_disconnected_();
+  void handle_remote_state_(const std::string &message);
   void set_state_(State state);
 
   std::string url_;
@@ -67,6 +73,10 @@ class VapeSatellite : public Component {
   uint32_t output_sample_rate_{24000};
   uint32_t last_reconnect_attempt_{0};
   std::vector<uint8_t> send_buffer_;
+  Trigger<> idle_trigger_;
+  Trigger<> listening_trigger_;
+  Trigger<> thinking_trigger_;
+  Trigger<> speaking_trigger_;
 };
 
 }  // namespace vape_satellite

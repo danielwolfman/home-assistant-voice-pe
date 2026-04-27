@@ -1,4 +1,5 @@
 import esphome.codegen as cg
+from esphome import automation
 from esphome.components import esp32, microphone, speaker
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_MICROPHONE, CONF_SPEAKER
@@ -14,6 +15,10 @@ CONF_URL = "url"
 CONF_DEVICE_ID = "device_id"
 CONF_INPUT_SAMPLE_RATE = "input_sample_rate"
 CONF_OUTPUT_SAMPLE_RATE = "output_sample_rate"
+CONF_ON_IDLE = "on_idle"
+CONF_ON_LISTENING = "on_listening"
+CONF_ON_THINKING = "on_thinking"
+CONF_ON_SPEAKING = "on_speaking"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -33,6 +38,10 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_OUTPUT_SAMPLE_RATE, default=24000): cv.one_of(
             16000, 24000, 48000, int=True
         ),
+        cv.Optional(CONF_ON_IDLE): automation.validate_automation(single=True),
+        cv.Optional(CONF_ON_LISTENING): automation.validate_automation(single=True),
+        cv.Optional(CONF_ON_THINKING): automation.validate_automation(single=True),
+        cv.Optional(CONF_ON_SPEAKING): automation.validate_automation(single=True),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -65,3 +74,12 @@ async def to_code(config):
     cg.add(var.set_device_id(config[CONF_DEVICE_ID]))
     cg.add(var.set_input_sample_rate(config[CONF_INPUT_SAMPLE_RATE]))
     cg.add(var.set_output_sample_rate(config[CONF_OUTPUT_SAMPLE_RATE]))
+
+    for conf, trigger in [
+        (CONF_ON_IDLE, var.get_idle_trigger()),
+        (CONF_ON_LISTENING, var.get_listening_trigger()),
+        (CONF_ON_THINKING, var.get_thinking_trigger()),
+        (CONF_ON_SPEAKING, var.get_speaking_trigger()),
+    ]:
+        if conf in config:
+            await automation.build_automation(trigger, [], config[conf])

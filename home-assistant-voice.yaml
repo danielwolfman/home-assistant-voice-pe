@@ -357,8 +357,8 @@ binary_sensor:
                                               - script.execute:
                                                   id: play_sound
                                                   priority: true
-                                                  sound_file: "center_button_press_sound"
-                                              - delay: 300ms
+                                                  sound_file: "wake_word_triggered_sound"
+                                              - delay: 250ms
                                               - lambda: id(vape_sat).start("button");
       # Double Click
       #  . Exposed as an event entity. To be used in automations inside Home Assistant
@@ -1064,7 +1064,7 @@ script:
             id(control_leds_improv_ble_state).execute();
           } else if (id(init_in_progress)) {
             id(control_leds_init_state).execute();
-          } else if (!id(wifi_id).is_connected() || !id(api_id).is_connected()){
+          } else if (!id(wifi_id).is_connected()){
             id(control_leds_no_ha_connection_state).execute();
           } else if (id(center_button).state) {
             id(control_leds_center_button_touched).execute();
@@ -1731,12 +1731,8 @@ micro_wake_word:
     gain_factor: 4
   stop_after_detection: false
   models:
-    - model: https://github.com/kahrendt/microWakeWord/releases/download/okay_nabu_20241226.3/okay_nabu.json
-      id: okay_nabu
     - model: hey_jarvis
       id: hey_jarvis
-    - model: hey_mycroft
-      id: hey_mycroft
     - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
       id: stop
       internal: true
@@ -1770,17 +1766,13 @@ micro_wake_word:
                             - media_player.stop:
                                 announcement: true
                                 id: external_media_player
-                          # Start the voice assistant and play the wake sound, if enabled
+                          # Play local feedback before starting satellite capture.
                           else:
-                            - if:
-                                condition:
-                                  switch.is_on: wake_sound
-                                then:
-                                  - script.execute:
-                                      id: play_sound
-                                      priority: true
-                                      sound_file: "wake_word_triggered_sound"
-                                  - delay: 300ms
+                            - script.execute:
+                                id: play_sound
+                                priority: true
+                                sound_file: "wake_word_triggered_sound"
+                            - delay: 250ms
                             - lambda: id(vape_sat).start(wake_word);
 
 vape_satellite:
@@ -1792,7 +1784,23 @@ vape_satellite:
     channels: 0
   speaker: announcement_resampling_speaker
   input_sample_rate: 16000
-  output_sample_rate: 24000
+  output_sample_rate: 48000
+  on_idle:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
+    - script.execute: control_leds
+    - script.execute:
+        id: play_sound
+        priority: false
+        sound_file: "mute_switch_on_sound"
+  on_listening:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_listening_for_command_phase_id};
+    - script.execute: control_leds
+  on_thinking:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
+    - script.execute: control_leds
+  on_speaking:
+    - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
+    - script.execute: control_leds
 
 select:
   - platform: template
@@ -1810,20 +1818,14 @@ select:
       # Sets specific wake word probabilities computed for each particular model
       # Note probability cutoffs are set as a quantized uint8 value, each comment has the corresponding floating point cutoff
       # False Accepts per Hour values are tested against all units and channels from the Dinner Party Corpus.
-      # These cutoffs apply only to the specific models included in the firmware: okay_nabu@20241226.3, hey_jarvis@v2, hey_mycroft@v2
+      # These cutoffs apply only to the Hey Jarvis wake-word model.
       lambda: |-
         if (x == "Slightly sensitive") {
-          id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH on DipCo (Manifest's default)
           id(hey_jarvis).set_probability_cutoff(247);   // 0.97 -> 0.563 FAPH on DipCo (Manifest's default)
-          id(hey_mycroft).set_probability_cutoff(253);  // 0.99 -> 0.567 FAPH on DipCo
         } else if (x == "Moderately sensitive") {
-          id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH on DipCo
           id(hey_jarvis).set_probability_cutoff(235);   // 0.92 -> 0.939 FAPH on DipCo
-          id(hey_mycroft).set_probability_cutoff(242);  // 0.95 -> 1.502 FAPH on DipCo (Manifest's default)
         } else if (x == "Very sensitive") {
-          id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH on DipCo
           id(hey_jarvis).set_probability_cutoff(212);   // 0.83 -> 1.502 FAPH on DipCo
-          id(hey_mycroft).set_probability_cutoff(237);  // 0.93 -> 1.878 FAPH on DipCo
         }
 
 voice_assistant:
