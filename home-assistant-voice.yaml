@@ -16,6 +16,9 @@ substitutions:
   voice_assist_error_phase_id: '11'
   # Change this to true in case you ahve a hidden SSID at home.
   hidden_ssid: "false"
+  # Linux voice assistant satellite server. Override in local secrets/overlay when deploying.
+  vape_satellite_url: "ws://192.168.1.121:8765/vape"
+  vape_external_components_path: "esphome/components"
   # Substitutions for audio files
   jack_connected_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/jack_connected.flac
   jack_disconnected_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/jack_disconnected.flac
@@ -349,7 +352,7 @@ binary_sensor:
                                                   priority: true
                                                   sound_file: "center_button_press_sound"
                                               - delay: 300ms
-                                              - voice_assistant.start:
+                                              - lambda: id(vape_sat).start("button");
       # Double Click
       #  . Exposed as an event entity. To be used in automations inside Home Assistant
       - timing:
@@ -1683,6 +1686,11 @@ voice_kit:
 # Sendspin related components are pinned to specific commits for reproducible builds
 external_components:
   - source:
+      type: local
+      path: ${vape_external_components_path}
+    components:
+      - vape_satellite
+  - source:
       type: git
       url: https://github.com/esphome/home-assistant-voice-pe
       ref: dev
@@ -1766,8 +1774,18 @@ micro_wake_word:
                                       priority: true
                                       sound_file: "wake_word_triggered_sound"
                                   - delay: 300ms
-                            - voice_assistant.start:
-                                wake_word: !lambda return wake_word;
+                            - lambda: id(vape_sat).start(wake_word);
+
+vape_satellite:
+  id: vape_sat
+  url: ${vape_satellite_url}
+  device_id: home-assistant-voice-pe
+  microphone:
+    microphone: i2s_mics
+    channels: 0
+  speaker: announcement_resampling_speaker
+  input_sample_rate: 16000
+  output_sample_rate: 24000
 
 select:
   - platform: template
