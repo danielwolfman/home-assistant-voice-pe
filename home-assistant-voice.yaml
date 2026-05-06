@@ -1733,6 +1733,8 @@ micro_wake_word:
   models:
     - model: hey_jarvis
       id: hey_jarvis
+    - model: hey_mycroft
+      id: hey_mycroft
     - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
       id: stop
       internal: true
@@ -1818,14 +1820,16 @@ select:
       # Sets specific wake word probabilities computed for each particular model
       # Note probability cutoffs are set as a quantized uint8 value, each comment has the corresponding floating point cutoff
       # False Accepts per Hour values are tested against all units and channels from the Dinner Party Corpus.
-      # These cutoffs apply only to the Hey Jarvis wake-word model.
       lambda: |-
         if (x == "Slightly sensitive") {
           id(hey_jarvis).set_probability_cutoff(247);   // 0.97 -> 0.563 FAPH on DipCo (Manifest's default)
+          id(hey_mycroft).set_probability_cutoff(247);
         } else if (x == "Moderately sensitive") {
           id(hey_jarvis).set_probability_cutoff(235);   // 0.92 -> 0.939 FAPH on DipCo
+          id(hey_mycroft).set_probability_cutoff(235);
         } else if (x == "Very sensitive") {
           id(hey_jarvis).set_probability_cutoff(212);   // 0.83 -> 1.502 FAPH on DipCo
+          id(hey_mycroft).set_probability_cutoff(212);
         }
 
 voice_assistant:
