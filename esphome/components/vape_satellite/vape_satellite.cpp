@@ -22,7 +22,9 @@ void VapeSatellite::setup() {
   this->send_buffer_.resize(SEND_CHUNK_SIZE);
 
   this->mic_source_->add_data_callback([this](const std::vector<uint8_t> &data) {
-    if (this->state_ == State::STREAMING && this->mic_ring_buffer_ != nullptr) {
+    if ((this->state_ == State::CONNECTING || this->state_ == State::WAITING_FOR_CAPTURE ||
+         this->state_ == State::STREAMING) &&
+        this->mic_ring_buffer_ != nullptr) {
       this->mic_ring_buffer_->write(data.data(), data.size());
     }
   });
@@ -41,10 +43,12 @@ void VapeSatellite::loop() {
     }
   }
 
+  if (this->state_ == State::CONNECTING || this->state_ == State::WAITING_FOR_CAPTURE ||
+      this->state_ == State::STREAMING) {
+    this->start_microphone_();
+  }
+
   if (this->state_ == State::STREAMING) {
-    if (!this->mic_source_->is_running()) {
-      this->mic_source_->start();
-    }
     this->send_audio_();
   }
 }
@@ -61,6 +65,8 @@ float VapeSatellite::get_setup_priority() const { return setup_priority::AFTER_C
 
 void VapeSatellite::start(const std::string &wake_word) {
   this->pending_wake_word_ = wake_word.empty() ? "wake" : wake_word;
+  this->reset_microphone_buffer_();
+  this->start_microphone_();
   if (!this->connected_) {
     this->set_state_(State::CONNECTING);
     this->connect_();
@@ -83,6 +89,7 @@ void VapeSatellite::stop() {
   if (this->mic_source_ != nullptr && this->mic_source_->is_running()) {
     this->mic_source_->stop();
   }
+  this->reset_microphone_buffer_();
   if (this->speaker_ != nullptr) {
     this->speaker_->stop();
   }
@@ -166,6 +173,18 @@ void VapeSatellite::send_audio_() {
       return;
     }
     available = this->mic_ring_buffer_->available();
+  }
+}
+
+void VapeSatellite::start_microphone_() {
+  if (this->mic_source_ != nullptr && !this->mic_source_->is_running()) {
+    this->mic_source_->start();
+  }
+}
+
+void VapeSatellite::reset_microphone_buffer_() {
+  if (this->mic_ring_buffer_ != nullptr) {
+    this->mic_ring_buffer_->reset();
   }
 }
 

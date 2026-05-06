@@ -52,6 +52,8 @@ class VapeSatellite : public Component {
   void send_hello_();
   void send_wake_detected_();
   void send_audio_();
+  void start_microphone_();
+  void reset_microphone_buffer_();
   void handle_text_(const char *data, size_t len);
   void handle_binary_(const uint8_t *data, size_t len);
   void handle_connected_();
